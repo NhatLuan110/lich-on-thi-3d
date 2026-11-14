@@ -272,6 +272,23 @@ html, body {
   border-color: rgba(255, 255, 255, 0.25);
 }
 
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.16);
+  font-weight: 600;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+}
+
+.btn-play-active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.28), rgba(16, 185, 129, 0.24));
+  border-color: rgba(96, 165, 250, 0.65);
+  color: #e0f2fe;
+}
+
 .btn-ghost {
   background: transparent;
   border-color: transparent;
@@ -709,12 +726,159 @@ textarea.input {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
 
 .slot-item:last-child { border-bottom: none; }
 .slot-item:hover { background: rgba(255, 255, 255, 0.03); }
 .slot-item.done { opacity: 0.56; }
+.slot-item.is-timing {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.14), rgba(16, 185, 129, 0.08));
+  box-shadow: inset 3px 0 0 #60a5fa;
+}
+
+.slot-content.clickable {
+  cursor: pointer;
+}
+
+.slot-timer-progress {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #93c5fd;
+}
+
+.slot-timer-track {
+  flex: 1;
+  max-width: 140px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.slot-timer-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #60a5fa, #34d399);
+}
+
+/* Active Focus Banner */
+.focus-banner {
+  border-radius: var(--radius);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.35), rgba(17, 24, 39, 0.92) 55%, rgba(6, 78, 59, 0.28));
+  backdrop-filter: blur(14px);
+  padding: 14px 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.16);
+}
+
+.focus-banner-left {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.focus-pulse-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #93c5fd;
+}
+
+.focus-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #34d399;
+  box-shadow: 0 0 10px #34d399;
+}
+
+.focus-dot.running {
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+.focus-dot.paused {
+  background: #fbbf24;
+  box-shadow: none;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.45); opacity: 0.55; }
+}
+
+.focus-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.focus-sub {
+  font-size: 12.5px;
+  color: #cbd5e1;
+}
+
+.focus-bar-track {
+  margin-top: 4px;
+  width: 100%;
+  max-width: 440px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.focus-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa, #34d399);
+  transition: width 0.3s ease;
+}
+
+.focus-banner-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.focus-clocks {
+  text-align: right;
+}
+
+.focus-clock-main {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.focus-clock-rem {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.focus-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
 .slot-left {
   display: flex;

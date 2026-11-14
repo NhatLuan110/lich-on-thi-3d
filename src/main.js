@@ -7,16 +7,21 @@ function loadState() {
   const fallback = {
     days: deepClone(INITIAL_DAYS).map((d) => ({
       ...d,
-      slots: d.slots.map((s) => ({ ...s, status: 'todo', note: '' })),
+      slots: d.slots.map((s) => ({ ...s, status: 'todo', note: '', loggedSecs: 0 })),
     })),
     examChecklist: deepClone(EXAM_CHECKLIST_INIT),
+    activeTimer: null, // { slotId, running, startedAtMs }
   };
   try {
     const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('studyverse_3d_ptit_2026_v1');
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.days)) return fallback;
+    parsed.days.forEach((d) => d.slots.forEach((s) => {
+      if (typeof s.loggedSecs !== 'number') s.loggedSecs = 0;
+    }));
     if (!Array.isArray(parsed.examChecklist)) parsed.examChecklist = deepClone(EXAM_CHECKLIST_INIT);
+    if (!parsed.activeTimer) parsed.activeTimer = null;
     return parsed;
   } catch {
     return fallback;
@@ -25,13 +30,20 @@ function loadState() {
 
 let state = loadState();
 let ui = {
-  activeTab: 'week1', // week1..week4 | all | exams
+  activeTab: 'week1',
   subjectFilter: null,
   statusFilter: 'all',
   search: '',
   editingSlotId: null,
   resetArmed: false,
 };
+
+const slotIndex = new Map();
+function rebuildIndex() {
+  slotIndex.clear();
+  state.days.forEach((day) => day.slots.forEach((sl) => slotIndex.set(sl.id, { day, sl })));
+}
+rebuildIndex();
 
 function getTodayISO() {
   const n = new Date();
@@ -49,6 +61,14 @@ function fmtHours(mins) {
   return `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, '0')}`;
 }
 
+function fmtClock(totalSecs) {
+  const s = Math.max(0, Math.floor(totalSecs));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+}
+
 function fmtDateVN(iso) {
   const [, m, d] = iso.split('-');
   return `${d}/${m}`;
@@ -62,23 +82,228 @@ function saveState(msg) {
   const el = document.getElementById('save-status');
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    el.textContent = msg || `Đã lưu lúc ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+    if (el) el.textContent = msg || `Đã lưu lúc ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
   } catch {
-    el.textContent = 'Không lưu được localStorage — hãy dùng Xuất JSON';
+    if (el) el.textContent = 'Không lưu được localStorage — hãy dùng Xuất JSON';
   }
 }
 
-const slotIndex = new Map();
-function rebuildIndex() {
-  slotIndex.clear();
-  state.days.forEach((day) => day.slots.forEach((sl) => slotIndex.set(sl.id, { day, sl })));
+function playGentleChime() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    [523.25, 659.25, 783.99].forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + idx * 0.18;
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.exponentialRampToValueAtTime(0.14, t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.46);
+    });
+  } catch {}
 }
+
+// Live Session Stopwatch Engine
+function getLiveSecs(sl) {
+  if (!sl) return 0;
+  if (state.activeTimer && state.activeTimer.slotId === sl.id && state.activeTimer.running) {
+    return Math.max(0, Math.floor((Date.now() - state.activeTimer.startedAtMs) / 1000));
+  }
+  return sl.loggedSecs || 0;
+}
+
+function getEffectiveMins(sl) {
+  if (sl.status === 'done') return sl.mins;
+  const loggedMins = Math.floor(getLiveSecs(sl) / 60);
+  return Math.min(sl.mins, loggedMins);
+}
+
+let sessionTickInt = null;
+let lastChimedId = null;
+
+function commitRunningElapsed() {
+  if (!state.activeTimer || !state.activeTimer.running) return;
+  const found = slotIndex.get(state.activeTimer.slotId);
+  if (found) {
+    found.sl.loggedSecs = getLiveSecs(found.sl);
+  }
+}
+
+function startOrToggleSlotTimer(slotId) {
+  const target = slotIndex.get(slotId);
+  if (!target) return;
+
+  // Clicking currently active session toggles pause/resume
+  if (state.activeTimer && state.activeTimer.slotId === slotId) {
+    if (state.activeTimer.running) {
+      target.sl.loggedSecs = getLiveSecs(target.sl);
+      state.activeTimer.running = false;
+      saveState('Đã tạm dừng bấm giờ');
+    } else {
+      if (target.sl.status === 'todo') target.sl.status = 'doing';
+      state.activeTimer.startedAtMs = Date.now() - (target.sl.loggedSecs || 0) * 1000;
+      state.activeTimer.running = true;
+      saveState('Đang tiếp tục bấm giờ');
+    }
+    syncSessionLoop();
+    renderAll();
+    return;
+  }
+
+  // Freeze previous running session if switching
+  commitRunningElapsed();
+
+  if (target.sl.status === 'todo') target.sl.status = 'doing';
+  state.activeTimer = {
+    slotId: target.sl.id,
+    running: true,
+    startedAtMs: Date.now() - (target.sl.loggedSecs || 0) * 1000,
+  };
+  saveState(`Đang tính giờ: ${SUBJ_MAP[target.sl.subj].short}`);
+  syncSessionLoop();
+  renderAll();
+}
+
+function pauseActiveTimer() {
+  if (!state.activeTimer || !state.activeTimer.running) return;
+  commitRunningElapsed();
+  state.activeTimer.running = false;
+  saveState('Đã tạm dừng bấm giờ');
+  syncSessionLoop();
+  renderAll();
+}
+
+function completeActiveSession() {
+  if (!state.activeTimer) return;
+  const found = slotIndex.get(state.activeTimer.slotId);
+  if (found) {
+    found.sl.loggedSecs = getLiveSecs(found.sl);
+    found.sl.status = 'done';
+  }
+  state.activeTimer.running = false;
+  saveState('Đã hoàn thành buổi học!');
+  syncSessionLoop();
+  renderAll();
+}
+
+function resetActiveSessionTimer() {
+  if (!state.activeTimer) return;
+  const found = slotIndex.get(state.activeTimer.slotId);
+  if (found) found.sl.loggedSecs = 0;
+  state.activeTimer.running = false;
+  state.activeTimer.startedAtMs = Date.now();
+  lastChimedId = null;
+  saveState('Đã đặt lại giờ của buổi học');
+  syncSessionLoop();
+  renderAll();
+}
+
+function closeFocusBanner() {
+  commitRunningElapsed();
+  state.activeTimer = null;
+  saveState();
+  syncSessionLoop();
+  renderAll();
+}
+
+function syncSessionLoop() {
+  if (sessionTickInt) {
+    clearInterval(sessionTickInt);
+    sessionTickInt = null;
+  }
+  if (state.activeTimer && state.activeTimer.running) {
+    let tickCount = 0;
+    sessionTickInt = setInterval(() => {
+      tickCount++;
+      updateLiveClockDisplays();
+      if (tickCount % 15 === 0) {
+        commitRunningElapsed();
+        saveState();
+        renderTopMetrics();
+      }
+    }, 1000);
+  }
+  updateLiveClockDisplays();
+}
+
+function updateLiveClockDisplays() {
+  const banner = document.getElementById('focus-banner');
+  if (!state.activeTimer) {
+    banner.classList.add('hidden');
+    document.title = 'StudyFlow — Lịch Ôn Thi (16/11 – 13/12/2026)';
+    return;
+  }
+
+  const found = slotIndex.get(state.activeTimer.slotId);
+  if (!found) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  const { day, sl } = found;
+  const sub = SUBJ_MAP[sl.subj];
+  const secs = getLiveSecs(sl);
+  const targetSecs = sl.mins * 60;
+  const rem = targetSecs - secs;
+  const pct = Math.min(100, Math.round((secs / targetSecs) * 100));
+
+  banner.classList.remove('hidden');
+  document.getElementById('focus-title').textContent = `${sub.name} · ${day.wd} (${fmtDateVN(day.date)}) — ${sl.period} ${sl.time}`;
+  document.getElementById('focus-sub').textContent = sl.task;
+  document.getElementById('focus-elapsed').textContent = fmtClock(secs);
+  document.getElementById('focus-remaining').textContent = rem >= 0 ? `Còn ${fmtClock(rem)}` : `Vượt +${fmtClock(-rem)}`;
+  document.getElementById('focus-bar-fill').style.width = `${pct}%`;
+
+  const dot = document.getElementById('focus-dot');
+  const stLabel = document.getElementById('focus-state-label');
+  const toggleBtn = document.getElementById('focus-toggle');
+  if (state.activeTimer.running) {
+    dot.className = 'focus-dot running';
+    stLabel.textContent = 'Đang tính giờ';
+    toggleBtn.textContent = 'Tạm dừng';
+    document.title = `⏱ ${fmtClock(secs)} · ${sub.short} — StudyFlow`;
+    if (rem <= 0 && lastChimedId !== sl.id) {
+      lastChimedId = sl.id;
+      playGentleChime();
+    }
+  } else {
+    dot.className = 'focus-dot paused';
+    stLabel.textContent = 'Đang tạm dừng';
+    toggleBtn.textContent = 'Tiếp tục';
+    document.title = `⏸ ${fmtClock(secs)} · ${sub.short} — StudyFlow`;
+  }
+
+  // Update inline slot readout without re-rendering full DOM
+  const inlineText = document.getElementById(`slot-live-text-${sl.id}`);
+  const inlineFill = document.getElementById(`slot-live-fill-${sl.id}`);
+  if (inlineText) {
+    inlineText.textContent = `${fmtClock(secs)} / ${fmtHours(sl.mins)} (${pct}%)`;
+  }
+  if (inlineFill) {
+    inlineFill.style.width = `${pct}%`;
+  }
+}
+
+window.addEventListener('beforeunload', () => {
+  if (state.activeTimer && state.activeTimer.running) {
+    commitRunningElapsed();
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  }
+});
 
 function renderAll() {
   rebuildIndex();
   renderTopMetrics();
   renderSidebar();
   renderSchedule();
+  updateLiveClockDisplays();
 }
 
 function renderTopMetrics() {
@@ -86,7 +311,8 @@ function renderTopMetrics() {
   state.days.forEach((d) => d.slots.forEach((s) => {
     totS++;
     totM += s.mins;
-    if (s.status === 'done') { doneS++; doneM += s.mins; }
+    if (s.status === 'done') doneS++;
+    doneM += getEffectiveMins(s);
   }));
   const pctS = totS ? Math.round((doneS / totS) * 100) : 0;
   const pctM = totM ? Math.round((doneM / totM) * 100) : 0;
@@ -112,7 +338,7 @@ function renderSidebar() {
   state.days.forEach((d) => d.slots.forEach((sl) => {
     if (!stats[sl.subj]) return;
     stats[sl.subj].tot += sl.mins;
-    if (sl.status === 'done') stats[sl.subj].done += sl.mins;
+    stats[sl.subj].done += getEffectiveMins(sl);
   }));
 
   document.getElementById('btn-clear-subj').classList.toggle('hidden', !ui.subjectFilter);
@@ -146,7 +372,6 @@ function renderSidebar() {
     list.appendChild(btn);
   });
 
-  // Weekly progress bars
   const wp = document.getElementById('weeks-progress');
   wp.innerHTML = '';
   const ranges = ['16–22/11', '23–29/11', '30/11–06/12', '07–13/12'];
@@ -154,7 +379,8 @@ function renderSidebar() {
     let mins = 0, doneM = 0, cnt = 0, doneC = 0;
     state.days.filter((d) => d.week === w).forEach((d) => d.slots.forEach((s) => {
       mins += s.mins; cnt++;
-      if (s.status === 'done') { doneM += s.mins; doneC++; }
+      if (s.status === 'done') doneC++;
+      doneM += getEffectiveMins(s);
     }));
     const pct = mins ? Math.round((doneM / mins) * 100) : 0;
     const row = document.createElement('div');
@@ -246,7 +472,7 @@ function renderSchedule() {
     count++;
 
     const totalM = day.slots.reduce((a, b) => a + b.mins, 0);
-    const doneM = day.slots.filter((s) => s.status === 'done').reduce((a, b) => a + b.mins, 0);
+    const doneM = day.slots.reduce((a, b) => a + getEffectiveMins(b), 0);
     const isToday = day.date === todayISO;
 
     const card = document.createElement('div');
@@ -265,33 +491,58 @@ function renderSchedule() {
 
     matched.forEach((sl) => {
       const sub = SUBJ_MAP[sl.subj];
+      const isActive = state.activeTimer && state.activeTimer.slotId === sl.id;
+      const isRunning = isActive && state.activeTimer.running;
+      const secs = getLiveSecs(sl);
+      const pct = Math.min(100, Math.round((secs / (sl.mins * 60)) * 100));
+
       const row = document.createElement('div');
       row.id = `slot-${sl.id}`;
-      row.className = `slot-item ${sl.status === 'done' ? 'done' : ''}`;
+      row.className = `slot-item ${sl.status === 'done' ? 'done' : ''} ${isActive ? 'is-timing' : ''}`;
       row.innerHTML = `
         <div class="slot-left">
           <input type="checkbox" class="slot-check" ${sl.status === 'done' ? 'checked' : ''} />
-          <div class="slot-content">
+          <div class="slot-content clickable" title="Click để bắt đầu / tạm dừng tính giờ buổi này">
             <div class="slot-top">
               <span class="slot-time tabular">${sl.period} · ${sl.time} (${fmtHours(sl.mins)})</span>
               <span class="slot-tag"><span class="dot" style="background:${sub.color}"></span>${sub.short}</span>
-              ${sl.status === 'doing' ? '<span class="pill pill-warn">Đang học</span>' : ''}
+              ${sl.status === 'doing' && !isRunning ? '<span class="pill pill-warn">Đang học</span>' : ''}
+              ${isRunning ? '<span class="pill pill-today">● Đang tính giờ</span>' : ''}
             </div>
             <div class="slot-task">${escapeHtml(sl.task)}</div>
+            ${(secs > 0 || isActive) ? `
+              <div class="slot-timer-progress">
+                <div class="slot-timer-track"><div id="slot-live-fill-${sl.id}" class="slot-timer-fill" style="width:${pct}%"></div></div>
+                <span id="slot-live-text-${sl.id}" class="tabular">${fmtClock(secs)} / ${fmtHours(sl.mins)} (${pct}%)</span>
+              </div>
+            ` : ''}
             ${sl.note ? `<div class="slot-note">Ghi chú: ${escapeHtml(sl.note)}</div>` : ''}
           </div>
         </div>
         <div class="slot-actions">
+          <button type="button" class="btn btn-sm btn-play ${isActive ? 'btn-play-active' : ''}" title="Bấm giờ buổi này">${isRunning ? '⏸ Dừng' : (secs > 0 ? '▶ Tiếp' : '▶ Bấm giờ')}</button>
           ${!day.mwfBusy && sl.period === 'Tối' ? `<button type="button" class="btn btn-sm btn-bonus" title="Dùng thêm 45p đệm 22:15–23:00">${sl.mins > 135 ? '-45p' : '+45p'}</button>` : ''}
           <button type="button" class="btn btn-sm btn-edit">Sửa</button>
         </div>
       `;
 
       row.querySelector('.slot-check').addEventListener('change', (e) => {
-        sl.status = e.target.checked ? 'done' : 'todo';
+        if (e.target.checked) {
+          if (state.activeTimer && state.activeTimer.slotId === sl.id) {
+            sl.loggedSecs = getLiveSecs(sl);
+            state.activeTimer.running = false;
+          }
+          sl.status = 'done';
+        } else {
+          sl.status = (sl.loggedSecs || 0) > 0 ? 'doing' : 'todo';
+        }
         saveState();
+        syncSessionLoop();
         renderAll();
       });
+
+      row.querySelector('.slot-content').addEventListener('click', () => startOrToggleSlotTimer(sl.id));
+      row.querySelector('.btn-play').addEventListener('click', () => startOrToggleSlotTimer(sl.id));
 
       const bonusBtn = row.querySelector('.btn-bonus');
       if (bonusBtn) {
@@ -314,6 +565,15 @@ function renderSchedule() {
     grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#71717a">Không có buổi học nào khớp với bộ lọc hiện tại.</div>`;
   }
 }
+
+// Focus Banner Controls
+document.getElementById('focus-toggle').addEventListener('click', () => {
+  if (!state.activeTimer) return;
+  startOrToggleSlotTimer(state.activeTimer.slotId);
+});
+document.getElementById('focus-complete').addEventListener('click', completeActiveSession);
+document.getElementById('focus-reset').addEventListener('click', resetActiveSessionTimer);
+document.getElementById('focus-close').addEventListener('click', closeFocusBanner);
 
 // Modal
 function openModal(day, sl) {
@@ -371,6 +631,7 @@ document.getElementById('btn-today').addEventListener('click', () => {
 });
 
 document.getElementById('btn-export').addEventListener('click', () => {
+  commitRunningElapsed();
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -389,7 +650,9 @@ document.getElementById('input-import').addEventListener('change', (e) => {
       const parsed = JSON.parse(r.result);
       if (parsed && Array.isArray(parsed.days)) {
         state = parsed;
+        rebuildIndex();
         saveState('Đã nhập tiến độ từ JSON');
+        syncSessionLoop();
         renderAll();
       }
     } catch {
@@ -414,11 +677,13 @@ document.getElementById('btn-reset').addEventListener('click', (e) => {
     localStorage.removeItem('studyverse_3d_ptit_2026_v1');
   } catch {}
   state = loadState();
+  rebuildIndex();
   saveState('Đã đặt lại mặc định');
+  syncSessionLoop();
   renderAll();
 });
 
-// Focus Timer
+// Topbar Standalone Pomodoro Timer
 let timerSec = 50 * 60;
 let timerInt = null;
 const timerDisp = document.getElementById('timer-display');
@@ -441,7 +706,7 @@ timerBtn.addEventListener('click', () => {
     timerBtn.textContent = 'Tạm dừng';
     timerInt = setInterval(() => {
       if (timerSec > 0) { timerSec--; drawTimer(); }
-      else { clearInterval(timerInt); timerInt = null; timerBtn.textContent = 'Xong!'; }
+      else { clearInterval(timerInt); timerInt = null; timerBtn.textContent = 'Xong!'; playGentleChime(); }
     }, 1000);
   }
 });
@@ -456,3 +721,4 @@ const todayObj = state.days.find((d) => d.date === getTodayISO());
 if (todayObj) ui.activeTab = `week${todayObj.week}`;
 
 renderAll();
+syncSessionLoop();

@@ -132,7 +132,34 @@
         </div>
 
         <div class="schedule-meta-bar">
-          <span>Khung học mỗi ngày (~6h): <b>Sáng</b> 08:00–10:25 · <b>Chiều</b> 15:30–17:20 · <b>Tối T3/5/7/CN</b> 20:00–22:15 (đệm +45p tới 23:00) · <b>T2/4/6</b> bận 20:00–22:00, học 22:00–23:00</span>
+          <span>Khung học mỗi ngày (~6h): <b>Sáng</b> 08:00–10:25 · <b>Chiều</b> 15:30–17:20 · <b>Tối T3/5/7/CN</b> 20:00–22:15 (đệm +45p tới 23:00) · <b>T2/4/6</b> bận 20:00–22:00, học 22:00–23:00 · <i>Click vào buổi học hoặc nút ▶ Bấm giờ để tính thời gian thực</i></span>
+        </div>
+
+        <!-- Active Session Live Stopwatch Banner -->
+        <div id="focus-banner" class="focus-banner hidden">
+          <div class="focus-banner-left">
+            <div class="focus-pulse-wrap">
+              <span id="focus-dot" class="focus-dot"></span>
+              <span id="focus-state-label" class="focus-state">Đang bấm giờ</span>
+            </div>
+            <div id="focus-title" class="focus-title">—</div>
+            <div id="focus-sub" class="focus-sub">—</div>
+            <div class="focus-bar-track">
+              <div id="focus-bar-fill" class="focus-bar-fill" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="focus-banner-right">
+            <div class="focus-clocks">
+              <div class="focus-clock-main tabular" id="focus-elapsed">00:00:00</div>
+              <div class="focus-clock-rem tabular" id="focus-remaining">Còn 02:25:00</div>
+            </div>
+            <div class="focus-btns">
+              <button id="focus-toggle" class="btn btn-gradient">Tạm dừng</button>
+              <button id="focus-complete" class="btn btn-success">✓ Xong buổi</button>
+              <button id="focus-reset" class="btn btn-ghost" title="Đặt lại giờ đã bấm của buổi này">↺</button>
+              <button id="focus-close" class="btn btn-ghost" title="Đóng thanh bấm giờ">✕</button>
+            </div>
+          </div>
         </div>
 
         <div id="schedule-grid" class="schedule-grid"></div>
