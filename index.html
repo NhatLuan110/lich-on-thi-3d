@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudyFlow — Lịch Ôn Thi (16/11 – 13/12/2026)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script type="module" crossorigin src="./assets/index-Z4x7AwN6.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-Btb6oakn.css">
+</head>
+<body>
+  <!-- Soft Ambient Aurora Backdrop -->
+  <div class="ambient-bg" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="dot-grid"></div>
+  </div>
+
+  <div class="app-shell">
+    <!-- Top Navbar -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="brand-mark">SF</div>
+          <div>
+            <h1>StudyFlow · 16/11 – 13/12/2026</h1>
+            <div id="save-status" class="brand-sub">Tự động lưu tiến độ trên trình duyệt</div>
+          </div>
+        </div>
+
+        <div class="topbar-metrics">
+          <div class="metric-chip">
+            <div>
+              <div class="metric-chip-label">Buổi học</div>
+              <div id="m-sessions" class="metric-chip-val tabular">0/84 (0%)</div>
+            </div>
+            <div class="mini-progress"><div id="m-sessions-bar" class="mini-progress-fill" style="width:0%"></div></div>
+          </div>
+
+          <div class="metric-chip">
+            <div>
+              <div class="metric-chip-label">Giờ tích lũy</div>
+              <div id="m-hours" class="metric-chip-val tabular">0h00 / 167h00</div>
+            </div>
+            <div class="mini-progress"><div id="m-hours-bar" class="mini-progress-fill" style="width:0%"></div></div>
+          </div>
+
+          <div class="metric-chip">
+            <div>
+              <div class="metric-chip-label">Môn thi kế tiếp</div>
+              <div id="m-exam" class="metric-chip-val tabular">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="theme-dots" title="Đổi tông màu tương lai">
+            <button type="button" class="theme-dot active" data-theme="aurora" style="background:linear-gradient(135deg,#06b6d4,#a855f7)" title="Aurora Cyan-Violet"></button>
+            <button type="button" class="theme-dot" data-theme="cyber" style="background:linear-gradient(135deg,#ec4899,#22d3ee)" title="Cyber Neon"></button>
+            <button type="button" class="theme-dot" data-theme="emerald" style="background:linear-gradient(135deg,#10b981,#38bdf8)" title="Emerald Matrix"></button>
+          </div>
+          <div class="timer-pill">
+            <select id="timer-preset" class="select-plain" aria-label="Thời gian tập trung">
+              <option value="50">50p</option>
+              <option value="25">25p</option>
+              <option value="90">90p</option>
+            </select>
+            <span id="timer-display" class="timer-readout tabular">50:00</span>
+            <button id="timer-toggle" class="btn btn-sm btn-gradient">Bắt đầu</button>
+            <button id="timer-reset" class="btn btn-sm btn-ghost" title="Đặt lại đồng hồ">↺</button>
+          </div>
+
+          <button id="btn-today" class="btn btn-gradient">Hôm nay</button>
+          <button id="btn-export" class="btn">Xuất JSON</button>
+          <label class="btn" style="cursor:pointer">Nhập JSON<input id="input-import" type="file" accept=".json,application/json" hidden /></label>
+          <button id="btn-reset" class="btn btn-ghost">Đặt lại</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2-Column Bento Dashboard -->
+    <main class="dashboard">
+      <!-- Left Sidebar: Subjects & Weekly Progress -->
+      <aside class="sidebar">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>8 Môn Thi &amp; Tiến Độ</h2>
+            <button id="btn-clear-subj" class="btn btn-sm btn-ghost hidden">Hiện tất cả</button>
+          </div>
+          <div id="subjects-list" class="subjects-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Tiến Độ 4 Tuần</h2>
+            <span class="muted-text tabular">41h45 / tuần</span>
+          </div>
+          <div id="weeks-progress" class="weeks-progress"></div>
+        </div>
+      </aside>
+
+      <!-- Main Schedule Content -->
+      <section class="content-area">
+        <!-- Hero Banner with Artwork + Gradient -->
+        <div class="hero-banner">
+          <img src="./hero-bg.jpg" alt="" class="hero-img" />
+          <div class="hero-scrim"></div>
+          <div class="hero-content">
+            <div class="hero-left">
+              <span class="hero-eyebrow">Chiến dịch ôn thi HK1 · 19 tín chỉ</span>
+              <h2 class="hero-title">4 Tuần Vàng Trước Cụm Thi 15/12 – 08/01</h2>
+              <p class="hero-desc">
+                Ưu tiên hoàn thành <b>Tiếng Anh (3 kỹ năng)</b>, <b>Kinh tế lượng</b>, <b>Kế toán</b> &amp; mindmap <b>Quản trị Marketing</b> trước 13/12. Tối 2-4-6 bận 20h–22h chỉ xếp bài nhẹ.
+              </p>
+            </div>
+            <div class="hero-right">
+              <div class="hero-stat-box">
+                <div class="hero-stat-label">Hoàn thành tổng</div>
+                <div id="hero-pct" class="hero-stat-big tabular">0%</div>
+                <div id="hero-sub" class="hero-stat-sub tabular">0 / 167h00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <div id="week-tabs" class="tabs"></div>
+          <div class="filter-group">
+            <select id="filter-status" class="select">
+              <option value="all">Tất cả trạng thái</option>
+              <option value="pending">Chưa xong</option>
+              <option value="done">Đã hoàn thành</option>
+            </select>
+            <input id="filter-search" class="input" type="search" placeholder="Tìm môn, chương, bài..." />
+          </div>
+        </div>
+
+        <div class="schedule-meta-bar">
+          <span>Khung học mỗi ngày (~6h): <b>Sáng</b> 08:00–10:25 · <b>Chiều</b> 15:30–17:20 · <b>Tối T3/5/7/CN</b> 20:00–22:15 (đệm +45p tới 23:00) · <b>T2/4/6</b> bận 20:00–22:00, học 22:00–23:00 · <i>Click vào buổi học hoặc nút ▶ Bấm giờ để tính thời gian thực</i></span>
+        </div>
+
+        <!-- Active Session Live Stopwatch Banner -->
+        <div id="focus-banner" class="focus-banner hidden">
+          <div class="focus-banner-left">
+            <div class="focus-pulse-wrap">
+              <span id="focus-dot" class="focus-dot"></span>
+              <span id="focus-state-label" class="focus-state">Đang bấm giờ</span>
+            </div>
+            <div id="focus-title" class="focus-title">—</div>
+            <div id="focus-sub" class="focus-sub">—</div>
+            <div class="focus-bar-track">
+              <div id="focus-bar-fill" class="focus-bar-fill" style="width:0%"></div>
+            </div>
+          </div>
+          <div class="focus-banner-right">
+            <div class="focus-clocks">
+              <div class="focus-clock-main tabular" id="focus-elapsed">00:00:00</div>
+              <div class="focus-clock-rem tabular" id="focus-remaining">Còn 02:25:00</div>
+            </div>
+            <div class="focus-btns">
+              <button id="focus-toggle" class="btn btn-gradient">Tạm dừng</button>
+              <button id="focus-complete" class="btn btn-success">✓ Xong buổi</button>
+              <button id="focus-reset" class="btn btn-ghost" title="Đặt lại giờ đã bấm của buổi này">↺</button>
+              <button id="focus-close" class="btn btn-ghost" title="Đóng thanh bấm giờ">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="schedule-grid" class="schedule-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <h3 style="font-size:15px; font-weight:700">Cập nhật buổi học</h3>
+        <button id="modal-close" class="btn btn-sm btn-ghost">Đóng</button>
+      </div>
+      <div id="modal-meta" class="muted-text"></div>
+      <div class="field">
+        <label>Môn học</label>
+        <select id="modal-subj" class="select"></select>
+      </div>
+      <div class="field">
+        <label>Nhiệm vụ / Nội dung</label>
+        <textarea id="modal-task" rows="3" class="input"></textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+        <div class="field">
+          <label>Thời lượng (phút)</label>
+          <input id="modal-mins" type="number" min="15" max="300" step="5" class="input tabular" />
+        </div>
+        <div class="field">
+          <label>Trạng thái</label>
+          <select id="modal-status" class="select">
+            <option value="todo">Chưa học</option>
+            <option value="doing">Đang học</option>
+            <option value="done">Hoàn thành</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Ghi chú tiến độ</label>
+        <input id="modal-note" type="text" class="input" placeholder="VD: Cần ôn kỹ lại phần kiểm định F..." />
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px">
+        <button id="modal-save" class="btn btn-gradient">Lưu thay đổi</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
