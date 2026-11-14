@@ -96,6 +96,11 @@ function renderTopMetrics() {
   document.getElementById('m-hours').textContent = `${fmtHours(doneM)} / ${fmtHours(totM)}`;
   document.getElementById('m-hours-bar').style.width = `${pctM}%`;
 
+  const heroPct = document.getElementById('hero-pct');
+  const heroSub = document.getElementById('hero-sub');
+  if (heroPct) heroPct.textContent = `${pctM}%`;
+  if (heroSub) heroSub.textContent = `${fmtHours(doneM)} / ${fmtHours(totM)}`;
+
   const upcoming = SUBJECTS.find((s) => daysUntil(s.examDate) >= 0) || SUBJECTS[SUBJECTS.length - 1];
   const dLeft = daysUntil(upcoming.examDate);
   document.getElementById('m-exam').textContent = `${upcoming.short} · ${fmtDateVN(upcoming.examDate)} (${dLeft > 0 ? `còn ${dLeft}n` : 'hôm nay'})`;

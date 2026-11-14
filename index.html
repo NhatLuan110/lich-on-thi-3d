@@ -9,6 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
+  <!-- Soft Ambient Aurora Backdrop -->
+  <div class="ambient-bg" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="dot-grid"></div>
+  </div>
+
   <div class="app-shell">
     <!-- Top Navbar -->
     <header class="topbar">
@@ -16,7 +24,7 @@
         <div class="brand">
           <div class="brand-mark">SF</div>
           <div>
-            <h1>Lịch Ôn Thi · 16/11 – 13/12/2026</h1>
+            <h1>StudyFlow · 16/11 – 13/12/2026</h1>
             <div id="save-status" class="brand-sub">Tự động lưu tiến độ trên trình duyệt</div>
           </div>
         </div>
@@ -54,11 +62,11 @@
               <option value="90">90p</option>
             </select>
             <span id="timer-display" class="timer-readout tabular">50:00</span>
-            <button id="timer-toggle" class="btn btn-sm btn-primary">Bắt đầu</button>
+            <button id="timer-toggle" class="btn btn-sm btn-gradient">Bắt đầu</button>
             <button id="timer-reset" class="btn btn-sm btn-ghost" title="Đặt lại đồng hồ">↺</button>
           </div>
 
-          <button id="btn-today" class="btn btn-primary">Hôm nay</button>
+          <button id="btn-today" class="btn btn-gradient">Hôm nay</button>
           <button id="btn-export" class="btn">Xuất JSON</button>
           <label class="btn" style="cursor:pointer">Nhập JSON<input id="input-import" type="file" accept=".json,application/json" hidden /></label>
           <button id="btn-reset" class="btn btn-ghost">Đặt lại</button>
@@ -66,7 +74,7 @@
       </div>
     </header>
 
-    <!-- Clean 2-Column Bento Dashboard -->
+    <!-- 2-Column Bento Dashboard -->
     <main class="dashboard">
       <!-- Left Sidebar: Subjects & Weekly Progress -->
       <aside class="sidebar">
@@ -89,6 +97,28 @@
 
       <!-- Main Schedule Content -->
       <section class="content-area">
+        <!-- Hero Banner with Artwork + Gradient -->
+        <div class="hero-banner">
+          <img src="./hero-bg.jpg" alt="" class="hero-img" />
+          <div class="hero-scrim"></div>
+          <div class="hero-content">
+            <div class="hero-left">
+              <span class="hero-eyebrow">Chiến dịch ôn thi HK1 · 19 tín chỉ</span>
+              <h2 class="hero-title">4 Tuần Vàng Trước Cụm Thi 15/12 – 08/01</h2>
+              <p class="hero-desc">
+                Ưu tiên hoàn thành <b>Tiếng Anh (3 kỹ năng)</b>, <b>Kinh tế lượng</b>, <b>Kế toán</b> &amp; mindmap <b>Quản trị Marketing</b> trước 13/12. Tối 2-4-6 bận 20h–22h chỉ xếp bài nhẹ.
+              </p>
+            </div>
+            <div class="hero-right">
+              <div class="hero-stat-box">
+                <div class="hero-stat-label">Hoàn thành tổng</div>
+                <div id="hero-pct" class="hero-stat-big tabular">0%</div>
+                <div id="hero-sub" class="hero-stat-sub tabular">0 / 167h00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="toolbar">
           <div id="week-tabs" class="tabs"></div>
           <div class="filter-group">
@@ -102,7 +132,7 @@
         </div>
 
         <div class="schedule-meta-bar">
-          <span>Khung học: <b>Sáng</b> 08:00–10:25 · <b>Chiều</b> 15:30–17:20 · <b>Tối T3/5/7/CN</b> 20:00–22:15 (đệm +45p tới 23:00) · <b>T2/4/6</b> bận 20:00–22:00, học 22:00–23:00</span>
+          <span>Khung học mỗi ngày (~6h): <b>Sáng</b> 08:00–10:25 · <b>Chiều</b> 15:30–17:20 · <b>Tối T3/5/7/CN</b> 20:00–22:15 (đệm +45p tới 23:00) · <b>T2/4/6</b> bận 20:00–22:00, học 22:00–23:00</span>
         </div>
 
         <div id="schedule-grid" class="schedule-grid"></div>
@@ -145,7 +175,7 @@
         <input id="modal-note" type="text" class="input" placeholder="VD: Cần ôn kỹ lại phần kiểm định F..." />
       </div>
       <div style="display:flex; justify-content:flex-end; gap:8px">
-        <button id="modal-save" class="btn btn-primary">Lưu thay đổi</button>
+        <button id="modal-save" class="btn btn-gradient">Lưu thay đổi</button>
       </div>
     </div>
   </div>
