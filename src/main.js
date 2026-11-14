@@ -499,6 +499,7 @@ function renderSchedule() {
       const row = document.createElement('div');
       row.id = `slot-${sl.id}`;
       row.className = `slot-item ${sl.status === 'done' ? 'done' : ''} ${isActive ? 'is-timing' : ''}`;
+      row.style.setProperty('--slot-color', sub.color);
       row.innerHTML = `
         <div class="slot-left">
           <input type="checkbox" class="slot-check" ${sl.status === 'done' ? 'checked' : ''} />
@@ -719,6 +720,20 @@ document.getElementById('timer-reset').addEventListener('click', () => {
 
 const todayObj = state.days.find((d) => d.date === getTodayISO());
 if (todayObj) ui.activeTab = `week${todayObj.week}`;
+
+// Theme switcher
+const savedTheme = (() => { try { return localStorage.getItem('studyflow_theme') || 'aurora'; } catch { return 'aurora'; } })();
+function applyTheme(theme) {
+  document.body.classList.remove('theme-cyber', 'theme-emerald');
+  if (theme === 'cyber') document.body.classList.add('theme-cyber');
+  else if (theme === 'emerald') document.body.classList.add('theme-emerald');
+  document.querySelectorAll('.theme-dot').forEach((d) => d.classList.toggle('active', d.dataset.theme === theme));
+  try { localStorage.setItem('studyflow_theme', theme); } catch {}
+}
+document.querySelectorAll('.theme-dot').forEach((dot) => {
+  dot.addEventListener('click', () => applyTheme(dot.dataset.theme));
+});
+applyTheme(savedTheme);
 
 renderAll();
 syncSessionLoop();

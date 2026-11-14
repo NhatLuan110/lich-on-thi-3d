@@ -1,11 +1,11 @@
 export const STORAGE_KEY = 'studyverse_3d_ptit_2026_v2';
 
 export const SUBJECTS = [
-  { code: 'BAS1158', short: 'Tiếng Anh', name: 'Tiếng Anh (Course 2)', credits: 4, examDate: '2026-12-15', shift: 'Ca 3', room: '2A23', format: '3 kỹ năng (L-R-W)', color: '#60a5fa', alert: 'Thi đầu tiên' },
-  { code: 'BAS1151', short: 'KTCT Mác-Lênin', name: 'Kinh tế chính trị Mác - Lênin', credits: 2, examDate: '2026-12-18', shift: 'Ca 4', room: '2B33', format: 'Trắc nghiệm', color: '#a78bfa', alert: '' },
+  { code: 'BAS1158', short: 'Tiếng Anh', name: 'Tiếng Anh (Course 2)', credits: 4, examDate: '2026-12-15', shift: 'Ca 3', room: '2A23', format: '3 kỹ năng (L-R-W)', color: '#38bdf8', alert: 'Thi đầu tiên' },
+  { code: 'BAS1151', short: 'KTCT Mác-Lênin', name: 'Kinh tế chính trị Mác - Lênin', credits: 2, examDate: '2026-12-18', shift: 'Ca 4', room: '2B33', format: 'Trắc nghiệm', color: '#c084fc', alert: '' },
   { code: 'BSA1309', short: 'Kinh tế lượng', name: 'Kinh tế lượng', credits: 3, examDate: '2026-12-22', shift: 'Ca 3', room: '2B32', format: 'Thi viết', color: '#fb923c', alert: 'Nặng mô hình' },
   { code: 'FIA1389', short: 'Kế toán KD', name: 'Kế toán cho kinh doanh', credits: 3, examDate: '2026-12-24', shift: 'Ca 2', room: '2A16', format: 'Thi viết', color: '#fb7185', alert: 'Cách KTL 1,5 ngày' },
-  { code: 'MAR1424', short: 'QT Marketing', name: 'Quản trị Marketing', credits: 2, examDate: '2026-12-25', shift: 'Ca 1', room: '2B34', format: 'Thi viết', color: '#e879f9', alert: 'Sát Kế toán (1 tối)' },
+  { code: 'MAR1424', short: 'QT Marketing', name: 'Quản trị Marketing', credits: 2, examDate: '2026-12-25', shift: 'Ca 1', room: '2B34', format: 'Thi viết', color: '#f472b6', alert: 'Sát Kế toán (1 tối)' },
   { code: 'SKD1103', short: 'Tạo lập VB', name: 'Kỹ năng tạo lập Văn bản', credits: 1, examDate: '2026-12-30', shift: 'Ca 4', room: '2A33', format: 'Thuyết trình', color: '#2dd4bf', alert: '' },
   { code: 'BSA1328', short: 'Quản trị học', name: 'Quản trị học', credits: 3, examDate: '2027-01-07', shift: 'Ca 2', room: '2A16', format: 'Thi viết', color: '#34d399', alert: 'Cày sâu sau 25/12' },
   { code: 'SKD1102', short: 'Làm việc nhóm', name: 'Kỹ năng làm việc nhóm', credits: 1, examDate: '2027-01-08', shift: 'Ca 4', room: '2B03', format: 'Thuyết trình', color: '#818cf8', alert: '' },
