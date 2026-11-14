@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StudyVerse 3D — Lịch Ôn Thi (16/11 – 13/12/2026)</title>
+</head>
+<body>
+  <canvas id="scene-canvas"></canvas>
+
+  <!-- Top HUD -->
+  <header class="hud-top">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div>
+        <h1>StudyVerse 3D · Lịch Ôn Thi (16/11 – 13/12)</h1>
+        <div id="save-status" class="brand-sub">Sẵn sàng tự động lưu tiến độ (localStorage)</div>
+      </div>
+    </div>
+
+    <div class="hud-stats">
+      <div class="stat-pill">
+        <div class="stat-label"><span>Buổi hoàn thành</span><span id="stat-sessions-pct" class="tabular">0%</span></div>
+        <div class="stat-value tabular" id="stat-sessions">0/84 buổi</div>
+        <div class="bar-track"><div id="bar-sessions" class="bar-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="stat-pill">
+        <div class="stat-label"><span>Tổng giờ học</span><span id="stat-hours-pct" class="tabular">0%</span></div>
+        <div class="stat-value tabular" id="stat-hours">0h00 / 167h00</div>
+        <div class="bar-track"><div id="bar-hours" class="bar-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="stat-pill">
+        <div class="stat-label"><span>Môn thi gần nhất</span><span id="stat-next-days" style="color:#fbbf24" class="tabular">—</span></div>
+        <div class="stat-value" id="stat-next-exam">—</div>
+      </div>
+    </div>
+
+    <div class="hud-actions">
+      <div class="timer-box">
+        <select id="timer-preset" class="select" style="padding:2px 4px">
+          <option value="50">50p</option>
+          <option value="25">25p</option>
+          <option value="90">90p</option>
+        </select>
+        <span id="timer-display" class="timer-time tabular">50:00</span>
+        <button id="timer-toggle" class="btn btn-primary" style="padding:4px 8px">Học</button>
+        <button id="timer-reset" class="btn" style="padding:4px 7px">↺</button>
+      </div>
+
+      <button id="toggle-left" class="btn active">Môn học</button>
+      <button id="toggle-right" class="btn active">Lịch chi tiết</button>
+      <button id="btn-today" class="btn btn-primary">Hôm nay</button>
+      <button id="btn-export" class="btn">Xuất JSON</button>
+      <label class="btn" style="cursor:pointer">Nhập JSON<input id="input-import" type="file" accept=".json,application/json" hidden /></label>
+      <button id="btn-reset" class="btn btn-danger">Đặt lại</button>
+    </div>
+  </header>
+
+  <!-- Left Panel: Subjects -->
+  <aside id="panel-left" class="panel-left">
+    <div class="panel-header">
+      <span class="panel-title">8 Môn Thi &amp; Tiến Độ</span>
+      <button id="btn-clear-subj" class="mini-btn hidden">Hiện tất cả</button>
+    </div>
+    <div id="subject-list" class="panel-scroll"></div>
+  </aside>
+
+  <!-- Right Panel: Daily Schedule -->
+  <aside id="panel-right" class="panel-right">
+    <div class="panel-header" style="flex-direction:column; align-items:stretch; gap:8px">
+      <div id="week-tabs" style="display:flex; flex-wrap:wrap; gap:4px"></div>
+      <div class="filters-row">
+        <select id="filter-status" class="select">
+          <option value="all">Tất cả</option>
+          <option value="pending">Chưa xong</option>
+          <option value="done">Đã xong</option>
+        </select>
+        <input id="filter-search" class="input" style="flex:1" type="search" placeholder="Tìm bài học, chương..." />
+      </div>
+    </div>
+    <div id="schedule-list" class="panel-scroll"></div>
+  </aside>
+
+  <!-- Bottom Camera Dock -->
+  <div class="cam-dock">
+    <button class="btn" data-cam="overview">Toàn cảnh 3D</button>
+    <button class="btn" data-cam="w1">Tuần 1</button>
+    <button class="btn" data-cam="w2">Tuần 2</button>
+    <button class="btn" data-cam="w3">Tuần 3</button>
+    <button class="btn" data-cam="w4">Tuần 4</button>
+    <button class="btn" data-cam="exams">Tháp Thi</button>
+    <button id="btn-autorotate" class="btn">Tự xoay</button>
+  </div>
+
+  <!-- 3D Hover Tooltip -->
+  <div id="tooltip-3d" class="tooltip-3d hidden"></div>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <h3 style="font-size:15px; font-weight:700">Cập nhật buổi học</h3>
+        <button id="modal-close" class="btn">Đóng</button>
+      </div>
+      <div id="modal-meta" style="font-size:11.5px; color:#94a3b8"></div>
+      <div class="field">
+        <label>Môn học</label>
+        <select id="modal-subj" class="select"></select>
+      </div>
+      <div class="field">
+        <label>Nhiệm vụ / Nội dung</label>
+        <textarea id="modal-task" rows="3" class="input"></textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+        <div class="field">
+          <label>Thời lượng (phút)</label>
+          <input id="modal-mins" type="number" min="15" max="300" step="5" class="input tabular" />
+        </div>
+        <div class="field">
+          <label>Trạng thái</label>
+          <select id="modal-status" class="select">
+            <option value="todo">Chưa học</option>
+            <option value="doing">Đang học</option>
+            <option value="done">Hoàn thành</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Ghi chú tiến độ</label>
+        <input id="modal-note" type="text" class="input" placeholder="VD: Còn yếu phần kiểm định..." />
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px">
+        <button id="modal-save" class="btn btn-primary">Lưu &amp; Cập nhật 3D</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
