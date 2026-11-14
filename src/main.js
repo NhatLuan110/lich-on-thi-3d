@@ -1,6 +1,5 @@
 import './style.css';
 import { STORAGE_KEY, SUBJECTS, SUBJ_MAP, INITIAL_DAYS, EXAM_CHECKLIST_INIT } from './data.js';
-import { StudyScene3D } from './scene.js';
 
 function deepClone(x) { return JSON.parse(JSON.stringify(x)); }
 
@@ -13,7 +12,7 @@ function loadState() {
     examChecklist: deepClone(EXAM_CHECKLIST_INIT),
   };
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('studyverse_3d_ptit_2026_v1');
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.days)) return fallback;
@@ -26,14 +25,12 @@ function loadState() {
 
 let state = loadState();
 let ui = {
-  activeTab: 'week1',
+  activeTab: 'week1', // week1..week4 | all | exams
   subjectFilter: null,
   statusFilter: 'all',
   search: '',
-  selectedSlotId: null,
   editingSlotId: null,
   resetArmed: false,
-  layoutMode: 'split', // 'split' | 'hide-3d' | 'full-3d'
 };
 
 function getTodayISO() {
@@ -65,7 +62,7 @@ function saveState(msg) {
   const el = document.getElementById('save-status');
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    el.textContent = msg || `Đã lưu ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
+    el.textContent = msg || `Đã lưu lúc ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`;
   } catch {
     el.textContent = 'Không lưu được localStorage — hãy dùng Xuất JSON';
   }
@@ -76,82 +73,12 @@ function rebuildIndex() {
   slotIndex.clear();
   state.days.forEach((day) => day.slots.forEach((sl) => slotIndex.set(sl.id, { day, sl })));
 }
-rebuildIndex();
-
-const stageContainer = document.getElementById('stage-pane');
-const canvas = document.getElementById('scene-canvas');
-const tooltipEl = document.getElementById('tooltip-3d');
-
-const scene3d = new StudyScene3D(stageContainer, canvas, {
-  onSelectSlot(slotId) {
-    const found = slotIndex.get(slotId);
-    if (!found) return;
-    ui.selectedSlotId = slotId;
-    ui.activeTab = `week${found.day.week}`;
-    if (ui.layoutMode === 'full-3d') setLayoutMode('split');
-    scene3d.focusSlot(slotId);
-    scene3d.syncState(state.days, ui.subjectFilter);
-    renderSchedulePanel();
-    setTimeout(() => {
-      const row = document.getElementById(`slot-${slotId}`);
-      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 60);
-  },
-  onSelectExam(code) {
-    ui.subjectFilter = ui.subjectFilter === code ? null : code;
-    renderAll();
-  },
-  onHover(userData, cx, cy) {
-    if (!userData) {
-      tooltipEl.classList.add('hidden');
-      return;
-    }
-    if (userData.type === 'slot') {
-      const found = slotIndex.get(userData.slotId);
-      if (!found) return;
-      const { day, sl } = found;
-      const sub = SUBJ_MAP[sl.subj];
-      const st = sl.status === 'done' ? 'Hoàn thành' : (sl.status === 'doing' ? 'Đang học' : 'Chưa học');
-      tooltipEl.innerHTML = `
-        <div style="font-weight:700; color:${sub.color}">${sub.short} (${sub.credits}TC)</div>
-        <div style="color:#a1a1aa; font-size:11px; margin:2px 0 4px">${day.wd} (${fmtDateVN(day.date)}) · ${sl.period} ${sl.time}</div>
-        <div>${escapeHtml(sl.task)}</div>
-        <div style="margin-top:4px; font-size:11px; color:#d4d4d8">Trạng thái: <b>${st}</b></div>
-      `;
-    } else if (userData.type === 'exam') {
-      const sub = SUBJ_MAP[userData.code];
-      const diff = daysUntil(sub.examDate);
-      tooltipEl.innerHTML = `
-        <div style="font-weight:700; color:${sub.color}">${sub.name}</div>
-        <div style="font-size:11px; color:#a1a1aa">${sub.credits}TC · ${sub.format}</div>
-        <div style="margin-top:3px">Thi: <b>${sub.examDate.split('-').reverse().join('/')}</b> · ${sub.shift} · P.${sub.room}</div>
-        <div style="color:#fbbf24; font-size:11px">${diff >= 0 ? `Còn ${diff} ngày` : 'Đã qua'}</div>
-      `;
-    }
-    tooltipEl.classList.remove('hidden');
-    tooltipEl.style.left = `${Math.min(window.innerWidth - 275, cx + 14)}px`;
-    tooltipEl.style.top = `${Math.min(window.innerHeight - 130, cy + 14)}px`;
-  },
-});
-
-scene3d.buildBoard(state.days, getTodayISO());
-
-function setLayoutMode(mode) {
-  ui.layoutMode = mode;
-  const ws = document.getElementById('workspace');
-  ws.classList.toggle('hide-3d', mode === 'hide-3d');
-  ws.classList.toggle('full-3d', mode === 'full-3d');
-  document.getElementById('btn-toggle-3d').textContent = mode === 'hide-3d' ? 'Hiện 3D' : 'Ẩn 3D';
-  document.getElementById('btn-expand-3d').textContent = mode === 'full-3d' ? 'Thu gọn 3D' : 'Phóng to 3D';
-  setTimeout(() => scene3d._resize(), 30);
-}
 
 function renderAll() {
   rebuildIndex();
   renderTopMetrics();
-  renderSubjectStrip();
-  renderSchedulePanel();
-  scene3d.syncState(state.days, ui.subjectFilter);
+  renderSidebar();
+  renderSchedule();
 }
 
 function renderTopMetrics() {
@@ -164,9 +91,9 @@ function renderTopMetrics() {
   const pctS = totS ? Math.round((doneS / totS) * 100) : 0;
   const pctM = totM ? Math.round((doneM / totM) * 100) : 0;
 
-  document.getElementById('m-sessions').textContent = `${doneS}/${totS} buổi (${pctS}%)`;
+  document.getElementById('m-sessions').textContent = `${doneS}/${totS} (${pctS}%)`;
   document.getElementById('m-sessions-bar').style.width = `${pctS}%`;
-  document.getElementById('m-hours').textContent = `${fmtHours(doneM)} / ${fmtHours(totM)} (${pctM}%)`;
+  document.getElementById('m-hours').textContent = `${fmtHours(doneM)} / ${fmtHours(totM)}`;
   document.getElementById('m-hours-bar').style.width = `${pctM}%`;
 
   const upcoming = SUBJECTS.find((s) => daysUntil(s.examDate) >= 0) || SUBJECTS[SUBJECTS.length - 1];
@@ -174,7 +101,7 @@ function renderTopMetrics() {
   document.getElementById('m-exam').textContent = `${upcoming.short} · ${fmtDateVN(upcoming.examDate)} (${dLeft > 0 ? `còn ${dLeft}n` : 'hôm nay'})`;
 }
 
-function renderSubjectStrip() {
+function renderSidebar() {
   const stats = {};
   SUBJECTS.forEach((s) => { stats[s.code] = { tot: 0, done: 0 }; });
   state.days.forEach((d) => d.slots.forEach((sl) => {
@@ -183,44 +110,70 @@ function renderSubjectStrip() {
     if (sl.status === 'done') stats[sl.subj].done += sl.mins;
   }));
 
-  const grid = document.getElementById('subjects-strip');
-  grid.innerHTML = '';
+  document.getElementById('btn-clear-subj').classList.toggle('hidden', !ui.subjectFilter);
+
+  const list = document.getElementById('subjects-list');
+  list.innerHTML = '';
   SUBJECTS.forEach((s) => {
     const st = stats[s.code];
     const pct = st.tot ? Math.round((st.done / st.tot) * 100) : 0;
     const active = ui.subjectFilter === s.code;
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = `subj-pill ${active ? 'active' : ''}`;
-    card.style.setProperty('--subj-color', s.color);
-    card.innerHTML = `
-      <div class="subj-pill-top">
-        <span class="subj-title"><span class="dot" style="background:${s.color}"></span><span class="name">${s.short}</span></span>
-        <span class="tabular" style="font-size:11.5px; font-weight:700; color:${s.color}">${pct}%</span>
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `subj-item ${active ? 'active' : ''}`;
+    btn.style.setProperty('--subj-color', s.color);
+    btn.innerHTML = `
+      <div class="subj-row-1">
+        <span class="subj-name"><span class="dot" style="background:${s.color}"></span>${s.short} <span style="color:#71717a;font-weight:400">(${s.credits}TC)</span></span>
+        <span class="tabular" style="font-size:12px; font-weight:700; color:${s.color}">${pct}%</span>
       </div>
-      <div class="subj-sub">
-        <span>${fmtDateVN(s.examDate)} · ${s.credits}TC</span>
+      <div class="subj-row-2">
+        <span>Thi ${fmtDateVN(s.examDate)} · ${s.shift} · ${s.format}</span>
         <span class="tabular">${fmtHours(st.done)}/${fmtHours(st.tot)}</span>
       </div>
-      <div class="subj-track"><div class="subj-fill" style="width:${pct}%; background:${s.color}"></div></div>
+      <div class="track"><div class="fill" style="width:${pct}%; background:${s.color}"></div></div>
+      ${s.alert ? `<div style="margin-top:4px; font-size:11px; color:#fbbf24">★ ${s.alert}</div>` : ''}
     `;
-    card.addEventListener('click', () => {
+    btn.addEventListener('click', () => {
       ui.subjectFilter = ui.subjectFilter === s.code ? null : s.code;
       renderAll();
     });
-    grid.appendChild(card);
+    list.appendChild(btn);
+  });
+
+  // Weekly progress bars
+  const wp = document.getElementById('weeks-progress');
+  wp.innerHTML = '';
+  const ranges = ['16–22/11', '23–29/11', '30/11–06/12', '07–13/12'];
+  [1, 2, 3, 4].forEach((w) => {
+    let mins = 0, doneM = 0, cnt = 0, doneC = 0;
+    state.days.filter((d) => d.week === w).forEach((d) => d.slots.forEach((s) => {
+      mins += s.mins; cnt++;
+      if (s.status === 'done') { doneM += s.mins; doneC++; }
+    }));
+    const pct = mins ? Math.round((doneM / mins) * 100) : 0;
+    const row = document.createElement('div');
+    row.className = 'week-row';
+    row.innerHTML = `
+      <div class="week-row-top">
+        <b>Tuần ${w} (${ranges[w - 1]})</b>
+        <span class="tabular">${doneC}/${cnt} buổi · ${fmtHours(doneM)}/${fmtHours(mins)}</span>
+      </div>
+      <div class="track"><div class="fill" style="width:${pct}%; background:linear-gradient(90deg,#60a5fa,#34d399)"></div></div>
+    `;
+    wp.appendChild(row);
   });
 }
 
-function renderSchedulePanel() {
+function renderSchedule() {
   const tabsEl = document.getElementById('week-tabs');
   const tabs = [
-    { key: 'week1', label: 'Tuần 1' },
-    { key: 'week2', label: 'Tuần 2' },
-    { key: 'week3', label: 'Tuần 3' },
-    { key: 'week4', label: 'Tuần 4' },
-    { key: 'all', label: 'Tất cả' },
-    { key: 'exams', label: 'Lịch thi' },
+    { key: 'week1', label: 'Tuần 1 (16–22/11)' },
+    { key: 'week2', label: 'Tuần 2 (23–29/11)' },
+    { key: 'week3', label: 'Tuần 3 (30/11–06/12)' },
+    { key: 'week4', label: 'Tuần 4 (07–13/12)' },
+    { key: 'all', label: 'Cả 4 tuần' },
+    { key: 'exams', label: 'Giai đoạn thi (14/12–08/01)' },
   ];
   tabsEl.innerHTML = '';
   tabs.forEach((t) => {
@@ -230,17 +183,13 @@ function renderSchedulePanel() {
     b.textContent = t.label;
     b.addEventListener('click', () => {
       ui.activeTab = t.key;
-      if (t.key.startsWith('week')) scene3d.focusWeek(Number(t.key.slice(4)));
-      else if (t.key === 'exams') scene3d.setMode('towers', true);
-      else scene3d.focusWeek(null);
-      sync3DModeButtons();
-      renderSchedulePanel();
+      renderSchedule();
     });
     tabsEl.appendChild(b);
   });
 
-  const list = document.getElementById('schedule-scroll');
-  list.innerHTML = '';
+  const grid = document.getElementById('schedule-grid');
+  grid.innerHTML = '';
 
   if (ui.activeTab === 'exams') {
     state.examChecklist.forEach((item) => {
@@ -252,7 +201,7 @@ function renderSchedulePanel() {
         <div class="slot-left">
           <input type="checkbox" class="slot-check" ${item.done ? 'checked' : ''} />
           <div class="slot-content">
-            <div class="slot-top-row">
+            <div class="slot-top">
               <span class="slot-tag"><span class="dot" style="background:${sub.color}"></span>${sub.name}</span>
               <span class="slot-time">${sub.credits}TC · ${sub.format}</span>
             </div>
@@ -263,9 +212,9 @@ function renderSchedulePanel() {
       card.querySelector('input').addEventListener('change', (e) => {
         item.done = e.target.checked;
         saveState();
-        renderSchedulePanel();
+        renderSchedule();
       });
-      list.appendChild(card);
+      grid.appendChild(card);
     });
     return;
   }
@@ -299,13 +248,13 @@ function renderSchedulePanel() {
     card.id = `day-${day.date}`;
     card.className = `day-card ${isToday ? 'is-today' : ''}`;
     card.innerHTML = `
-      <div class="day-header">
+      <div class="day-head">
         <div class="day-title">
           <span>${day.wd}, ${fmtDateVN(day.date)}</span>
           ${isToday ? '<span class="pill pill-today">Hôm nay</span>' : ''}
-          ${day.mwfBusy ? '<span class="pill pill-warn">Bận 20–22h</span>' : ''}
+          ${day.mwfBusy ? '<span class="pill pill-warn">Bận 20:00–22:00</span>' : ''}
         </div>
-        <span class="tabular" style="font-size:12px; color:#a1a1aa">${fmtHours(doneM)} / ${fmtHours(totalM)}</span>
+        <span class="tabular muted-text">${fmtHours(doneM)} / ${fmtHours(totalM)}</span>
       </div>
     `;
 
@@ -313,38 +262,30 @@ function renderSchedulePanel() {
       const sub = SUBJ_MAP[sl.subj];
       const row = document.createElement('div');
       row.id = `slot-${sl.id}`;
-      row.className = `slot-item ${sl.status === 'done' ? 'done' : ''} ${ui.selectedSlotId === sl.id ? 'selected' : ''}`;
+      row.className = `slot-item ${sl.status === 'done' ? 'done' : ''}`;
       row.innerHTML = `
         <div class="slot-left">
           <input type="checkbox" class="slot-check" ${sl.status === 'done' ? 'checked' : ''} />
           <div class="slot-content">
-            <div class="slot-top-row">
+            <div class="slot-top">
               <span class="slot-time tabular">${sl.period} · ${sl.time} (${fmtHours(sl.mins)})</span>
               <span class="slot-tag"><span class="dot" style="background:${sub.color}"></span>${sub.short}</span>
               ${sl.status === 'doing' ? '<span class="pill pill-warn">Đang học</span>' : ''}
             </div>
             <div class="slot-task">${escapeHtml(sl.task)}</div>
-            ${sl.note ? `<div class="slot-note">${escapeHtml(sl.note)}</div>` : ''}
+            ${sl.note ? `<div class="slot-note">Ghi chú: ${escapeHtml(sl.note)}</div>` : ''}
           </div>
         </div>
-        <div class="slot-controls">
-          ${!day.mwfBusy && sl.period === 'Tối' ? `<button type="button" class="btn btn-sm btn-bonus">${sl.mins > 135 ? '-45p' : '+45p'}</button>` : ''}
+        <div class="slot-actions">
+          ${!day.mwfBusy && sl.period === 'Tối' ? `<button type="button" class="btn btn-sm btn-bonus" title="Dùng thêm 45p đệm 22:15–23:00">${sl.mins > 135 ? '-45p' : '+45p'}</button>` : ''}
           <button type="button" class="btn btn-sm btn-edit">Sửa</button>
         </div>
       `;
 
       row.querySelector('.slot-check').addEventListener('change', (e) => {
         sl.status = e.target.checked ? 'done' : 'todo';
-        if (sl.status === 'done') scene3d.celebrateSlot(sl.id);
         saveState();
         renderAll();
-      });
-
-      row.querySelector('.slot-task').addEventListener('click', () => {
-        ui.selectedSlotId = sl.id;
-        scene3d.focusSlot(sl.id);
-        scene3d.syncState(state.days, ui.subjectFilter);
-        renderSchedulePanel();
       });
 
       const bonusBtn = row.querySelector('.btn-bonus');
@@ -361,17 +302,12 @@ function renderSchedulePanel() {
       card.appendChild(row);
     });
 
-    list.appendChild(card);
+    grid.appendChild(card);
   });
 
   if (count === 0) {
-    list.innerHTML = `<div style="text-align:center; padding:32px; color:#71717a">Không có buổi học nào khớp bộ lọc.</div>`;
+    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#71717a">Không có buổi học nào khớp với bộ lọc hiện tại.</div>`;
   }
-}
-
-function sync3DModeButtons() {
-  document.getElementById('mode-matrix').classList.toggle('active', scene3d.mode === 'matrix');
-  document.getElementById('mode-towers').classList.toggle('active', scene3d.mode === 'towers');
 }
 
 // Modal
@@ -397,37 +333,21 @@ document.getElementById('modal-close').addEventListener('click', closeModal);
 document.getElementById('modal-save').addEventListener('click', () => {
   const found = slotIndex.get(ui.editingSlotId);
   if (!found) return closeModal();
-  const prev = found.sl.status;
   found.sl.subj = document.getElementById('modal-subj').value;
   found.sl.task = document.getElementById('modal-task').value.trim() || found.sl.task;
   const mins = parseInt(document.getElementById('modal-mins').value, 10);
   if (!Number.isNaN(mins) && mins >= 15 && mins <= 300) found.sl.mins = mins;
   found.sl.status = document.getElementById('modal-status').value;
   found.sl.note = document.getElementById('modal-note').value.trim();
-  if (prev !== 'done' && found.sl.status === 'done') scene3d.celebrateSlot(found.sl.id);
   saveState();
   closeModal();
   renderAll();
 });
 
-// Events
-document.getElementById('filter-status').addEventListener('change', (e) => { ui.statusFilter = e.target.value; renderSchedulePanel(); });
-document.getElementById('filter-search').addEventListener('input', (e) => { ui.search = e.target.value; renderSchedulePanel(); });
-
-document.getElementById('mode-matrix').addEventListener('click', () => { scene3d.setMode('matrix', true); sync3DModeButtons(); });
-document.getElementById('mode-towers').addEventListener('click', () => { scene3d.setMode('towers', true); sync3DModeButtons(); });
-document.getElementById('btn-reset-cam').addEventListener('click', () => {
-  if (scene3d.mode === 'matrix') scene3d.focusWeek(null);
-  else scene3d.setMode('towers', true);
-});
-
-document.getElementById('btn-toggle-3d').addEventListener('click', () => {
-  setLayoutMode(ui.layoutMode === 'hide-3d' ? 'split' : 'hide-3d');
-});
-
-document.getElementById('btn-expand-3d').addEventListener('click', () => {
-  setLayoutMode(ui.layoutMode === 'full-3d' ? 'split' : 'full-3d');
-});
+// Filters & Buttons
+document.getElementById('btn-clear-subj').addEventListener('click', () => { ui.subjectFilter = null; renderAll(); });
+document.getElementById('filter-status').addEventListener('change', (e) => { ui.statusFilter = e.target.value; renderSchedule(); });
+document.getElementById('filter-search').addEventListener('input', (e) => { ui.search = e.target.value; renderSchedule(); });
 
 document.getElementById('btn-today').addEventListener('click', () => {
   const today = getTodayISO();
@@ -438,8 +358,6 @@ document.getElementById('btn-today').addEventListener('click', () => {
   ui.search = '';
   document.getElementById('filter-status').value = 'all';
   document.getElementById('filter-search').value = '';
-  scene3d.focusWeek(match.week);
-  sync3DModeButtons();
   renderAll();
   setTimeout(() => {
     const el = document.getElementById(`day-${match.date}`);
@@ -452,7 +370,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `lich-on-thi-3d-${getTodayISO()}.json`;
+  a.download = `lich-on-thi-${getTodayISO()}.json`;
   a.click();
   URL.revokeObjectURL(url);
 });
@@ -466,7 +384,7 @@ document.getElementById('input-import').addEventListener('change', (e) => {
       const parsed = JSON.parse(r.result);
       if (parsed && Array.isArray(parsed.days)) {
         state = parsed;
-        saveState('Đã nhập JSON');
+        saveState('Đã nhập tiến độ từ JSON');
         renderAll();
       }
     } catch {
@@ -486,7 +404,10 @@ document.getElementById('btn-reset').addEventListener('click', (e) => {
   }
   ui.resetArmed = false;
   e.target.textContent = 'Đặt lại';
-  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('studyverse_3d_ptit_2026_v1');
+  } catch {}
   state = loadState();
   saveState('Đã đặt lại mặc định');
   renderAll();
